@@ -1,0 +1,265 @@
+Ity valiny ity dia **guide complet**, natao **hampianatra anao hanangana azy tsikelikely**, satria ilay bot tadiavinao dia **computer vision bot**, tsy trading bot mahazatra. Vakio miadana, arahina étape par étape.
+
+---
+
+# I. INONA MARINA NO ATAONAO
+
+Ianao dia hanamboatra **BOT SCREEN-WATCHER** izay :
+
+* mijery **écran Pocket Option**
+* maka **screenshot**
+* mamaky **bougies + indicateurs amin’ny sary**
+* manapa-kevitra **ACHAT / VENTE**
+* mamoaka **signal (son, popup, log, screenshot)**
+
+❗ Tsy API
+❗ Tsy MT5
+❗ Tsy data numérique
+✅ IMAGE → LOGIQUE → SIGNAL
+
+---
+
+# II. AIZA NO HANAMBOARANA AZY
+
+### 1️⃣ Ordinateur
+
+* **Windows** (tsara kokoa)
+* Résolution fixe (oh: 1920×1080)
+* Pocket Option **toujours au même endroit**
+
+### 2️⃣ Langage
+
+* **Python 3.10+**
+
+### 3️⃣ Outils
+
+Mametraka ireto :
+
+```bash
+pip install opencv-python numpy mss pyautogui pandas playsound pillow
+```
+
+---
+
+# III. ARCHITECTURE SIMPLE (AZA MIHAFY LOATRA)
+
+Ataovy toy izao ny dossier :
+
+```text
+trading_bot_cv/
+│
+├── main.py
+├── capture.py
+├── vision.py
+├── indicators.py
+├── strategy.py
+├── filters.py
+├── output.py
+├── config.py
+└── logs/
+```
+
+---
+
+# IV. ETAPE 1 — SCREENSHOT (FOTOTRA INDRINDRA)
+
+### capture.py
+
+Maka sary chart **isaky ny 30s**
+
+```python
+import mss
+import time
+import cv2
+import numpy as np
+
+CHART_ZONE = {
+    "top": 100,
+    "left": 100,
+    "width": 1200,
+    "height": 600
+}
+
+def capture_chart():
+    with mss.mss() as sct:
+        img = np.array(sct.grab(CHART_ZONE))
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+        return img
+```
+
+❗ Tokony ho **FIXE** io zone io.
+
+---
+
+# V. ETAPE 2 — PREPROCESSING IMAGE
+
+### vision.py
+
+Manadio sary (mainty/fotsy, edges)
+
+```python
+import cv2
+
+def preprocess(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5,5), 0)
+    edges = cv2.Canny(blur, 50, 150)
+    return edges
+```
+
+---
+
+# VI. ETAPE 3 — DÉTECTION BOUGIES
+
+### vision.py (suite)
+
+Logique tsotra aloha :
+
+```python
+def detect_candle_color(img):
+    # approximation
+    green = img[:,:,1].mean()
+    red = img[:,:,2].mean()
+
+    if green > red:
+        return "GREEN"
+    else:
+        return "RED"
+```
+
+➡️ Tsy tonga lafatra fa **prototype**.
+
+---
+
+# VII. ETAPE 4 — RSI & MACD (VISION)
+
+### indicators.py
+
+Tsy manao calcul mathématique, fa :
+
+* mijery **position ligne**
+* mijery **direction**
+
+```python
+def rsi_zone(rsi_img):
+    # mila découpage RSI zone
+    # heuristic simple
+    if rsi_img.mean() < 80:
+        return "LOW"
+    elif rsi_img.mean() > 170:
+        return "HIGH"
+    else:
+        return "MID"
+```
+
+❗ Eto no tena mila **tests be**.
+
+---
+
+# VIII. ETAPE 5 — STRATEGY LOGIC
+
+### strategy.py
+
+```python
+def reversal_strategy(rsi, macd, candle, price_touch_ma):
+    if rsi == "LOW" and macd == "UP" and candle == "GREEN" and price_touch_ma:
+        return "CALL"
+    if rsi == "HIGH" and macd == "DOWN" and candle == "RED":
+        return "PUT"
+    return None
+```
+
+---
+
+# IX. ETAPE 6 — FILTRES ANTI-PERTE
+
+### filters.py
+
+```python
+import time
+
+last_signal_time = 0
+
+def cooldown():
+    global last_signal_time
+    if time.time() - last_signal_time < 60:
+        return False
+    last_signal_time = time.time()
+    return True
+```
+
+---
+
+# X. ETAPE 7 — OUTPUT STYLE BANDICAM
+
+### output.py
+
+```python
+from playsound import playsound
+import datetime
+
+def alert(signal):
+    playsound("alert.mp3")
+    print(f"{datetime.datetime.now()} | SIGNAL {signal}")
+```
+
+Screenshot avec flèche → OpenCV (`cv2.arrowedLine`)
+
+---
+
+# XI. MAIN LOOP (CŒUR DU BOT)
+
+### main.py
+
+```python
+import time
+from capture import capture_chart
+from vision import preprocess, detect_candle_color
+from strategy import reversal_strategy
+from output import alert
+
+while True:
+    img = capture_chart()
+    candle = detect_candle_color(img)
+
+    signal = reversal_strategy("LOW", "UP", candle, True)
+
+    if signal:
+        alert(signal)
+
+    time.sleep(30)
+```
+
+---
+
+# XII. RÈGLES D’OR (TRÈS IMPORTANT)
+
+1. ❌ Aza manandrana auto-trading mivantana
+2. ✔️ Signal only aloha
+3. ✔️ Fixe tanteraka :
+
+   * écran
+   * couleur
+   * zoom
+4. ✔️ Test amin’ny replay / screenshots
+5. ✔️ Log rehetra
+
+---
+
+# XIII. MARINA TSY AFENINA
+
+* ❌ Tsy 100% précis
+* ❌ Sensitive amin’ny changement graphique
+* ✔️ Possible
+* ✔️ Très formateur
+* ✔️ Niveau PRO / AI
+
+---
+
+## Raha tianao:
+
+* afaka ataoko **version ultra simple débutant**
+* na **diagramme étape par étape**
+* na **focus OpenCV uniquement**
+
+Lazao fotsiny izay tianao tohizana manaraka.
